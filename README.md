@@ -217,7 +217,7 @@ npm run lint
 
 ## License
 
-This project is provided as-is for educational and institutional use.
+[MIT License](LICENSE)
 
 ## Support
 
