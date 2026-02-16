@@ -1,4 +1,5 @@
 import './globals.css';
+import { Analytics } from "@vercel/analytics/next"
 
 export const metadata = {
   title: 'Student Report Generator - Create Professional Report Cards Instantly',
@@ -21,7 +22,7 @@ export const metadata = {
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: 'https://student-report-generator.com',
+    url: 'https://studentreportgenerator.vercel.app',
     title: 'Student Report Generator - Professional Report Cards in Seconds',
     description: 'Generate professional student report cards from Excel files automatically. Free, fast, and privacy-focused.',
     siteName: 'Student Report Generator',
@@ -30,11 +31,6 @@ export const metadata = {
     card: 'summary_large_image',
     title: 'Student Report Generator - Professional Report Cards',
     description: 'Generate professional report cards from Excel files instantly. 100% free and privacy-protected.',
-  },
-  verification: {
-    // Add verification codes when available
-    // google: 'verification_code',
-    // yandex: 'verification_code',
   },
   category: 'education',
 };
@@ -55,6 +51,7 @@ export default function RootLayout({ children }) {
       </head>
       <body className="antialiased min-h-screen bg-gray-50">
         {children}
+        <Analytics />
       </body>
     </html>
   );

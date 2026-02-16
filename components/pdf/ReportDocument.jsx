@@ -260,7 +260,7 @@ export default function ReportDocument({
               {school?.name || "School Name"}
             </Text> */}
             <Text style={{ marginTop: 4 }}>
-              Powered by Student Report Generator
+              Powered by https://studentreportgenerator.vercel.app
             </Text>
           </View>
         </Page>
