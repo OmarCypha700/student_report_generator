@@ -6,6 +6,7 @@ import {
   Download,
   Upload,
   FileSpreadsheet,
+  Info,
   FileText,
   CheckCircle,
   Sparkles,
@@ -246,7 +247,7 @@ export default function LandingPage() {
               title="Fill Your Data"
               description="Enter student names, roll numbers, and scores. Our template guides you through each column with examples."
               color="purple"
-            />
+            />            
             <StepCard
               number="3"
               icon={<FileText size={32} />}
@@ -255,6 +256,14 @@ export default function LandingPage() {
               color="green"
             />
           </div>
+
+          <div className="text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-lg p-4 mt-12 max-w-3xl mx-auto">
+              <span className="inline-flex gap-2 mb-2 text-xl font-bold">
+                <Info size={32} className="text-yellow-500" />
+                <p>NOTE</p>
+              </span>
+              <p>Class Names are automatically derived from the Excel filename (e.g., "jhs_1A.xlsx" becomes "JHS1A").</p>
+            </div>
         </div>
       </div>
 
