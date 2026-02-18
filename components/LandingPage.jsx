@@ -25,17 +25,24 @@ import { generateTemplate } from "@/utils/templateGenerator";
 export default function LandingPage() {
   const [showGenerator, setShowGenerator] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [showDownloadDialog, setShowDownloadDialog] = useState(false);
+  const [mode, setMode] = useState("PRIMARY");
 
-  const handleDownloadTemplate = async () => {
+  const handleDownloadTemplate = async (mode) => {
     setIsDownloading(true);
     try {
-      await generateTemplate();
+      await generateTemplate(mode);
       setTimeout(() => setIsDownloading(false), 1500);
     } catch (error) {
       console.error("Error downloading template:", error);
       setIsDownloading(false);
       alert("Error downloading template. Please try again.");
     }
+  };
+
+  const confirmDownloadTemplate = (mode) => {
+    setShowDownloadDialog(false);
+    handleDownloadTemplate(mode);
   };
 
   if (showGenerator) {
@@ -106,7 +113,7 @@ export default function LandingPage() {
             </button>
 
             <button
-              onClick={handleDownloadTemplate}
+              onClick={() => setShowDownloadDialog(true)}
               disabled={isDownloading}
               className="bg-white hover:bg-gray-50 text-gray-800 px-8 md:px-10 py-4 md:py-5 rounded-xl font-semibold text-base md:text-lg shadow-md hover:shadow-lg transition-all duration-200 border-2 border-gray-200 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -140,6 +147,49 @@ export default function LandingPage() {
             </div>
           </div>
         </div>
+
+        {/* Download Dialog */}
+        {showDownloadDialog && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                Confirm Template
+              </h3>
+
+              <p className="text-sm text-gray-600 mb-6">
+                Confirm the <strong>level of education</strong> for the template
+                you want to download. This will ensure you get the correct
+                subjects and formatting for your needs.
+              </p>
+
+              <select
+                value={mode}
+                onChange={(e) => setMode(e.target.value)}
+                className="w-full p-2 text-sm text-gray-600 border border-gray-300 rounded-lg mb-4"
+              >
+                <option value="PRIMARY">Primary</option>
+                <option value="JHS">JHS</option>
+                <option value="SHS">SHS</option>
+              </select>
+
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setShowDownloadDialog(false)}
+                  className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  onClick={() => confirmDownloadTemplate(mode)}
+                  className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition"
+                >
+                  Download Template
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Stats Section */}
@@ -229,7 +279,7 @@ export default function LandingPage() {
             <FeatureCard
               icon={<Award className="text-blue-500" size={28} />}
               title="Auto Grading"
-              description="Automatic grade calculation with customizable scales and remarks"
+              description="Automatic WAEC grading logic system calculation with and remarks"
             />
             <FeatureCard
               icon={<TrendingUp className="text-green-500" size={28} />}
@@ -320,7 +370,7 @@ export default function LandingPage() {
                 </h3>
                 <div className="flex flex-wrap gap-2 md:gap-3">
                   <span className="bg-white/20 px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium">
-                    All Subjects
+                    Primary | JHS & SHS Subjects
                   </span>
                 </div>
                 <p className="text-xs md:text-sm text-blue-100 mt-3 md:mt-4 flex items-start gap-2">
@@ -332,7 +382,7 @@ export default function LandingPage() {
               </div>
 
               <button
-                onClick={handleDownloadTemplate}
+                onClick={() => setShowDownloadDialog(true)}
                 disabled={isDownloading}
                 className="group bg-white text-blue-600 px-8 md:px-10 py-4 md:py-5 rounded-xl font-bold text-base md:text-lg hover:bg-blue-50 transition-all duration-200 shadow-lg hover:shadow-xl flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed w-full md:w-auto justify-center"
               >

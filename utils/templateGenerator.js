@@ -1,327 +1,318 @@
-import * as XLSX from 'xlsx';
+import * as XLSX from "xlsx";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DEFAULT SUBJECT LISTS
+// ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Generate downloadable Excel template with sample data and instructions
+ * Subject definitions per mode.
+ * For JHS and SHS the display name must include "(CORE)" or "(ELECTIVE)" so the
+ * processor can distinguish them for aggregate calculation.
+ * For PRIMARY the names are plain — no markers required (or expected).
  */
-export async function generateTemplate() {
+const SUBJECTS_BY_MODE = {
+  PRIMARY: [
+    "English",
+    "Mathematics",
+    "Science",
+    "Social Studies",
+    "RME",
+    "ICT",
+    "French",
+    "Twi",
+    "BDT",
+  ],
+  JHS: [
+    "English (CORE)",
+    "Mathematics (CORE)",
+    "Science (CORE)",
+    "Social Studies (CORE)",
+    "RME (ELECTIVE)",
+    "ICT (ELECTIVE)",
+    "French (ELECTIVE)",
+    "Twi (ELECTIVE)",
+    "BDT (ELECTIVE)",
+  ],
+  SHS: [
+    "English (CORE)",
+    "Mathematics (CORE)",
+    "Science (CORE)",
+    "Social Studies (CORE)",
+    "Biology (ELECTIVE)",
+    "Chemistry (ELECTIVE)",
+    "Physics (ELECTIVE)",
+    "Economics (ELECTIVE)",
+    "Geography (ELECTIVE)",
+    "French (ELECTIVE)",
+  ],
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PUBLIC API
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Generates and immediately downloads an Excel template for the given mode.
+ *
+ * Layout:
+ *   Row 1  │ roll_number │ student_name │ <Subject A> (merged) │ <Subject B> (merged) │ …
+ *   Row 2  │             │              │ class_score │ exam_score │ class_score │ exam_score │ …
+ *   Row 3+ │ sample data …
+ *
+ * @param {"PRIMARY"|"JHS"|"SHS"} [mode="PRIMARY"]
+ * @returns {Promise<true>}
+ * @throws {Error}
+ */
+export async function generateTemplate(mode = "PRIMARY") {
   try {
-    // Define subjects
-    const subjects = ['english', 'math', 'science', 'social', 'rme', 'ict', 'french', 'twi', 'bdt'];
-    
-    // Create header row
-    const headers = ['roll_number', 'student_name'];
-    
-    subjects.forEach(subject => {
-      headers.push(`${subject}_class`);
-      headers.push(`${subject}_exam`);
-    });
+    const subjects = SUBJECTS_BY_MODE[mode] ?? SUBJECTS_BY_MODE.PRIMARY;
 
-    // Create sample data rows with realistic scores
-    const sampleData = [
-      {
-        student_name: 'John Doe',
-        roll_number: 1,
-        ...generateSampleScores(subjects)
-      },
-      {
-        student_name: 'Jane Smith',
-        roll_number: 2,
-        ...generateSampleScores(subjects)
-      },
-      {
-        student_name: 'Bob Johnson',
-        roll_number: 3,
-        ...generateSampleScores(subjects)
-      },
-      {
-        student_name: 'Alice Williams',
-        roll_number: 4,
-        ...generateSampleScores(subjects)
-      },
-      {
-        student_name: 'Charlie Brown',
-        roll_number: 5,
-        ...generateSampleScores(subjects)
+    // ── Build row arrays ──────────────────────────────────────────────────────
+
+    // Row 0: identifier columns + subject names (each name in the ODD column,
+    //        the EVEN column is left blank — it will be part of the merge).
+    const headerRow = ["roll_number", "student_name"];
+    for (const subject of subjects) {
+      headerRow.push(subject); // merged cell will cover this col + next
+      headerRow.push("");      // blank — swallowed by the merge
+    }
+
+    // Row 1: blank for the two id columns + "class_score" / "exam_score" pairs
+    const subRow = ["", ""];
+    for (let i = 0; i < subjects.length; i++) {
+      subRow.push("class_score");
+      subRow.push("exam_score");
+    }
+
+    // Rows 2–6: five sample students with realistic scores
+    const sampleNames = [
+      [1, "John Doe"],
+      [2, "Jane Smith"],
+      [3, "Bob Johnson"],
+      [4, "Alice Williams"],
+      [5, "Charlie Brown"],
+    ];
+
+    const dataRows = sampleNames.map(([roll, name]) => {
+      const row = [roll, name];
+      for (let i = 0; i < subjects.length; i++) {
+        row.push(randomInt(18, 30)); // class score  (0–30)
+        row.push(randomInt(45, 70)); // exam score   (0–70)
       }
-    ];
-
-    // Create worksheet
-    const worksheet = XLSX.utils.json_to_sheet(sampleData, { header: headers });
-
-    // Set column widths for better readability
-    const columnWidths = [
-      { wch: 12 }, // roll_number
-      { wch: 20 }, // student_name
-    ];
-    
-    subjects.forEach(() => {
-      columnWidths.push({ wch: 12 }); // class score
-      columnWidths.push({ wch: 12 }); // exam score
+      return row;
     });
-    
-    worksheet['!cols'] = columnWidths;
 
-    // Add comprehensive instructions sheet
-    const instructionsData = [
-      ['═══════════════════════════════════════════════════════════════════════════════'],
-      ['                    STUDENT REPORT CARD GENERATOR'],
-      ['                          TEMPLATE INSTRUCTIONS'],
-      ['═══════════════════════════════════════════════════════════════════════════════'],
-      [''],
-      ['Welcome to the Student Report Card Generator! This template will help you create'],
-      ['professional report cards for your students quickly and easily.'],
-      [''],
-      ['═══════════════════════════════════════════════════════════════════════════════'],
-      ['                              HOW TO USE THIS TEMPLATE'],
-      ['═══════════════════════════════════════════════════════════════════════════════'],
-      [''],
-      ['STEP 1: FILL IN STUDENT INFORMATION'],
-      ['   • Column A (student_name): Enter the full name of each student'],
-      ['   • Column B (roll_number): Assign a unique roll number/ID for each student'],
-      [''],
-      ['STEP 2: ENTER SUBJECT SCORES'],
-      ['   • Class Score columns (ending with "_class"): Enter class work score (max 30)'],
-      ['   • Exam Score columns (ending with "_exam"): Enter exam score (max 70)'],
-      ['   • Total = Class Score + Exam Score (maximum 100 per subject)'],
-      [''],
-      ['STEP 3: SAVE AND UPLOAD'],
-      ['   • Save this file as .xlsx or .xls format'],
-      ['   • Go to the Report Generator website'],
-      ['   • Upload this file'],
-      ['   • Add your school name and logo'],
-      ['   • Download your professional PDF report cards!'],
-      [''],
-      ['═══════════════════════════════════════════════════════════════════════════════'],
-      ['                               GRADING SCALE'],
-      ['═══════════════════════════════════════════════════════════════════════════════'],
-      [''],
-      ['The system uses the following grading scale:'],
-      [''],
-      ['┌──────────────┬───────┬─────────────┐'],
-      ['│ Score Range  │ Grade │ Remark      │'],
-      ['├──────────────┼───────┼─────────────┤'],
-      ['│ 80 - 100     │   1   │ Excellent   │'],
-      ['│ 70 - 79      │   2   │ Very Good   │'],
-      ['│ 60 - 69      │   3   │ Good        │'],
-      ['│ 50 - 59      │   4   │ Credit      │'],
-      ['│ 45 - 49      │   5   │ Pass        │'],
-      ['│  0 - 44      │   6   │ Fail        │'],
-      ['└──────────────┴───────┴─────────────┘'],
-      [''],
-      ['═══════════════════════════════════════════════════════════════════════════════'],
-      ['                             SUBJECTS INCLUDED'],
-      ['═══════════════════════════════════════════════════════════════════════════════'],
-      [''],
-      ['CORE SUBJECTS (Required for Overall Grade):'],
-      ['   1. English - Language and Literature'],
-      ['   2. Mathematics - Numeracy and Problem Solving'],
-      ['   3. Science - General Science'],
-      ['   4. Social Studies - History, Geography, Civics'],
-      [''],
-      ['ELECTIVE SUBJECTS (Best 2 count towards Overall Grade):'],
-      ['   5. RME - Religious & Moral Education'],
-      ['   6. ICT - Information & Communication Technology'],
-      ['   7. French - Foreign Language'],
-      ['   8. Twi - Local Language'],
-      ['   9. BDT - Basic Design & Technology'],
-      [''],
-      ['Note: The system automatically detects subjects from your column headers.'],
-      ['You can add or remove subjects by adding/removing columns!'],
-      [''],
-      ['═══════════════════════════════════════════════════════════════════════════════'],
-      ['                        AUTOMATED CALCULATIONS'],
-      ['═══════════════════════════════════════════════════════════════════════════════'],
-      [''],
-      ['The system will automatically calculate:'],
-      [''],
-      ['✓ Total Scores: Class Score + Exam Score for each subject'],
-      ['✓ Subject Grades: Based on total score (1=Excellent to 6=Fail)'],
-      ['✓ Remarks: Performance description for each subject'],
-      ['✓ Class Positions: Overall ranking in the class'],
-      ['✓ Subject Positions: Ranking for each individual subject'],
-      ['✓ Overall Grade: Aggregate score (4 core + 2 best electives)'],
-      ['✓ Average Score: Mean score across all subjects'],
-      [''],
-      ['═══════════════════════════════════════════════════════════════════════════════'],
-      ['                          IMPORTANT NOTES'],
-      ['═══════════════════════════════════════════════════════════════════════════════'],
-      [''],
-      ['✓ DO NOT change the column header names'],
-      ['   (student_name, roll_number, english_class, english_exam, etc.)'],
-      [''],
-      ['✓ Class scores must be between 0 and 30'],
-      ['   (Scores above 30 will be automatically capped at 30)'],
-      [''],
-      ['✓ Exam scores must be between 0 and 70'],
-      ['   (Scores above 70 will be automatically capped at 70)'],
-      [''],
-      ['✓ You can add more rows for additional students'],
-      ['   (No limit on the number of students)'],
-      [''],
-      ['✓ Remove the sample data before adding your real student data'],
-      ['   (Keep the header row!)'],
-      [''],
-      ['✓ Leave cells empty if a student did not take a particular subject'],
-      ['   (Empty cells will be treated as 0)'],
-      [''],
-      ['✓ Ensure all student names are spelled correctly'],
-      ['   (Names appear exactly as entered on the report cards)'],
-      [''],
-      ['✓ Use unique roll numbers for each student'],
-      ['   (Duplicate roll numbers may cause confusion)'],
-      [''],
-      ['═══════════════════════════════════════════════════════════════════════════════'],
-      ['                     OVERALL GRADE CALCULATION'],
-      ['═══════════════════════════════════════════════════════════════════════════════'],
-      [''],
-      ['The Overall Grade (Aggregate Score) is calculated as follows:'],
-      [''],
-      ['1. Take grades from 4 CORE subjects:'],
-      ['   • English'],
-      ['   • Mathematics'],
-      ['   • Science'],
-      ['   • Social Studies'],
-      [''],
-      ['2. Add grades from BEST 2 elective subjects:'],
-      ['   • System automatically selects the 2 best performing electives'],
-      ['   • From: RME, ICT, French, Twi, BDT'],
-      [''],
-      ['3. Sum all 6 grades for Overall Grade'],
-      ['   • Lower aggregate = Better performance'],
-      ['   • Example: Aggregate of 6 (all 1s) is better than 12 (all 2s)'],
-      [''],
-      ['═══════════════════════════════════════════════════════════════════════════════'],
-      ['                        TIPS FOR BEST RESULTS'],
-      ['═══════════════════════════════════════════════════════════════════════════════'],
-      [''],
-      ['• Double-check all scores before uploading'],
-      ['• Ensure student names are complete and properly spelled'],
-      ['• Verify that roll numbers are unique and correct'],
-      ['• Use whole numbers for scores (decimals will be rounded)'],
-      ['• Keep a backup copy of your file before uploading'],
-      ['• Save your work regularly while entering data'],
-      ['• Test with a small group of students first'],
-      ['• Check the generated PDFs before printing'],
-      [''],
-      ['═══════════════════════════════════════════════════════════════════════════════'],
-      ['                          TROUBLESHOOTING'],
-      ['═══════════════════════════════════════════════════════════════════════════════'],
-      [''],
-      ['PROBLEM: File won\'t upload'],
-      ['SOLUTION: Ensure file is saved as .xlsx or .xls, not .csv'],
-      [''],
-      ['PROBLEM: Error message about missing columns'],
-      ['SOLUTION: Check that column headers match exactly (student_name, roll_number, etc.)'],
-      [''],
-      ['PROBLEM: Scores showing as 0'],
-      ['SOLUTION: Make sure scores are entered as numbers, not text'],
-      [''],
-      ['PROBLEM: Student positions not calculating'],
-      ['SOLUTION: Ensure all students have scores entered for at least some subjects'],
-      [''],
-      ['PROBLEM: Logo not appearing on report'],
-      ['SOLUTION: Upload logo as JPG, PNG, or WebP format, under 2MB'],
-      [''],
-      ['═══════════════════════════════════════════════════════════════════════════════'],
-      ['                            NEED HELP?'],
-      ['═══════════════════════════════════════════════════════════════════════════════'],
-      [''],
-      ['If you encounter any issues or have questions:'],
-      [''],
-      ['1. Check that all column headers are correct'],
-      ['2. Verify that scores are within the correct ranges (0-30 for class, 0-70 for exam)'],
-      ['3. Ensure the file is saved as .xlsx or .xls'],
-      ['4. Make sure there are no merged cells in the data'],
-      ['5. Review the sample data for reference'],
-      [''],
-      ['For additional support, visit the application help section.'],
-      [''],
-      ['═══════════════════════════════════════════════════════════════════════════════'],
-      ['                   READY TO START? SWITCH TO "Student Scores" TAB!'],
-      ['═══════════════════════════════════════════════════════════════════════════════'],
-      [''],
-      ['The "Student Scores" tab contains sample data to show you the format.'],
-      ['Delete the sample rows (keep the headers!) and add your actual student data.'],
-      [''],
-      ['Good luck with your report card generation!'],
-      [''],
-      ['═══════════════════════════════════════════════════════════════════════════════']
+    // ── Assemble sheet ────────────────────────────────────────────────────────
+
+    const allRows  = [headerRow, subRow, ...dataRows];
+    const sheet    = XLSX.utils.aoa_to_sheet(allRows);
+
+    // ── Merge subject-name cells (each spans 2 columns in row 0) ─────────────
+    const merges = [];
+    for (let s = 0; s < subjects.length; s++) {
+      const col = 2 + s * 2; // 0-based
+      merges.push({
+        s: { r: 0, c: col },
+        e: { r: 0, c: col + 1 },
+      });
+    }
+    sheet["!merges"] = merges;
+
+    // ── Column widths ─────────────────────────────────────────────────────────
+    const colWidths = [
+      { wch: 13 }, // roll_number
+      { wch: 22 }, // student_name
     ];
+    for (let i = 0; i < subjects.length; i++) {
+      colWidths.push({ wch: 14 }); // class_score
+      colWidths.push({ wch: 12 }); // exam_score
+    }
+    sheet["!cols"] = colWidths;
 
-    const instructionsSheet = XLSX.utils.aoa_to_sheet(instructionsData);
-    instructionsSheet['!cols'] = [{ wch: 85 }];
+    // ── Instructions sheet ────────────────────────────────────────────────────
+    const instructionsSheet = buildInstructionsSheet(mode);
 
-    // Create workbook with multiple sheets
+    // ── Workbook ──────────────────────────────────────────────────────────────
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Student Scores');
-    XLSX.utils.book_append_sheet(workbook, instructionsSheet, 'Instructions');
+    XLSX.utils.book_append_sheet(workbook, sheet, "Student Scores");
+    XLSX.utils.book_append_sheet(workbook, instructionsSheet, "Instructions");
 
-    // Generate and download file
-    const fileName = `student_report_template_${new Date().toISOString().split('T')[0]}.xlsx`;
-    XLSX.writeFile(workbook, fileName);
-    
+    XLSX.writeFile(
+      workbook,
+      `student_report_template_${mode.toLowerCase()}_${today()}.xlsx`
+    );
+
     return true;
   } catch (error) {
-    console.error('Error generating template:', error);
-    throw new Error('Failed to generate template. Please try again.');
+    console.error("Error generating template:", error);
+    throw new Error("Failed to generate template. Please try again.");
   }
 }
 
 /**
- * Generate realistic sample scores for demonstration
- * @param {Array} subjects - List of subject names
- * @returns {Object} - Object with sample scores for each subject
+ * Validates that a 2-D array (from sheet_to_json with header:1) conforms
+ * to the two-row header format expected by the processor.
+ *
+ * @param {Array<Array<any>>} rows
+ * @returns {{ valid: boolean, errors: string[], warnings: string[] }}
  */
-function generateSampleScores(subjects) {
-  const scores = {};
-  subjects.forEach(subject => {
-    // Generate realistic sample scores with some variation
-    const classScore = Math.floor(Math.random() * 11) + 20; // 20-30
-    const examScore = Math.floor(Math.random() * 21) + 50;  // 50-70
-    
-    scores[`${subject}_class`] = classScore;
-    scores[`${subject}_exam`] = examScore;
-  });
-  return scores;
-}
-
-/**
- * Validate template structure (optional utility function)
- * @param {Array} data - Parsed Excel data
- * @returns {Object} - Validation result
- */
-export function validateTemplate(data) {
-  const errors = [];
+export function validateTemplate(rows) {
+  const errors   = [];
   const warnings = [];
-  
-  if (!data || data.length === 0) {
-    errors.push('Template is empty');
+
+  if (!Array.isArray(rows) || rows.length < 3) {
+    errors.push(
+      "Template must have at least 3 rows: subject-name row, score-type row, and at least one data row."
+    );
     return { valid: false, errors, warnings };
   }
-  
-  const firstRow = data[0];
-  
-  // Check required columns
-  if (!firstRow.student_name) {
-    errors.push('Missing required column: student_name');
+
+  const headerRow = rows[0].map((c) => c?.toString().trim().toLowerCase());
+  const subRow    = rows[1].map((c) => c?.toString().trim().toLowerCase());
+
+  // Check identifier columns
+  if (headerRow[0] !== "roll_number") {
+    errors.push(`Column A, Row 1 must be "roll_number". Found: "${headerRow[0] || "(empty)"}".`);
   }
-  
-  if (firstRow.roll_number === undefined) {
-    errors.push('Missing required column: roll_number');
+  if (headerRow[1] !== "student_name") {
+    errors.push(`Column B, Row 1 must be "student_name". Found: "${headerRow[1] || "(empty)"}".`);
   }
-  
-  // Check for subject columns
-  const subjectColumns = Object.keys(firstRow).filter(key => 
-    key.endsWith('_class') || key.endsWith('_exam')
-  );
-  
-  if (subjectColumns.length === 0) {
-    errors.push('No subject columns found');
+
+  // Check subject pairs starting at col 2
+  let subjectCount = 0;
+  for (let col = 2; col < headerRow.length; col += 2) {
+    const name = headerRow[col];
+    if (!name) continue; // trailing blank
+
+    const s1 = subRow[col];
+    const s2 = subRow[col + 1];
+
+    if (s1 !== "class_score") {
+      errors.push(
+        `Subject "${headerRow[col]}" (column ${col + 1}): ` +
+        `expected "class_score" in row 2, found "${s1 || "(empty)"}".`
+      );
+    }
+    if (s2 !== "exam_score") {
+      errors.push(
+        `Subject "${headerRow[col]}" (column ${col + 2}): ` +
+        `expected "exam_score" in row 2, found "${s2 || "(empty)"}".`
+      );
+    }
+    subjectCount++;
   }
-  
-  return {
-    valid: errors.length === 0,
-    errors,
-    warnings
+
+  if (subjectCount === 0) {
+    errors.push(
+      "No subject columns found. Subject names should appear in row 1 starting at column C."
+    );
+  }
+
+  return { valid: errors.length === 0, errors, warnings };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PRIVATE HELPERS
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** @param {"PRIMARY"|"JHS"|"SHS"} mode */
+function buildInstructionsSheet(mode) {
+  const modeDescriptions = {
+    PRIMARY: "No grading markers required. Grades use a 1–6 scale.",
+    JHS:
+      'Subject names must include "(CORE)" or "(ELECTIVE)". ' +
+      "Aggregate = 4 Core + 2 Best Electives (BECE 1–9 scale).",
+    SHS:
+      'Subject names must include "(CORE)" or "(ELECTIVE)". ' +
+      "Aggregate = 3 Core + 3 Best Electives (WASSCE A1–F9 scale).",
   };
+
+  const lines = [
+    ["════════════════════════════════════════════════════════════════════════"],
+    ["          STUDENT REPORT CARD GENERATOR — TEMPLATE INSTRUCTIONS"],
+    [`                               MODE: ${mode}`],
+    ["════════════════════════════════════════════════════════════════════════"],
+    [""],
+    ["MODE NOTES"],
+    [`  ${modeDescriptions[mode] || ""}`],
+    [""],
+    ["════════════════════════════════════════════════════════════════════════"],
+    ["FILE STRUCTURE"],
+    ["════════════════════════════════════════════════════════════════════════"],
+    [""],
+    ["  Row 1 — Subject names"],
+    ["    • Column A: roll_number  (do not rename)"],
+    ["    • Column B: student_name (do not rename)"],
+    ["    • Column C onwards: one subject name per pair of columns"],
+    ['      e.g. "English (CORE)" spans columns C and D'],
+    [""],
+    ["  Row 2 — Score type labels"],
+    ['    • Must alternate "class_score" / "exam_score" for every subject'],
+    ["    • Leave columns A and B blank"],
+    [""],
+    ["  Row 3 onwards — Student data"],
+    ["    • Column A: roll number (must be unique)"],
+    ["    • Column B: student full name"],
+    ["    • Remaining columns: class score then exam score for each subject"],
+    [""],
+    ["════════════════════════════════════════════════════════════════════════"],
+    ["SCORE LIMITS"],
+    ["════════════════════════════════════════════════════════════════════════"],
+    [""],
+    ["  class_score : 0 – 30  (values above 30 are capped at 30)"],
+    ["  exam_score  : 0 – 70  (values above 70 are capped at 70)"],
+    ["  total       : 0 – 100 (calculated automatically)"],
+    [""],
+    ["════════════════════════════════════════════════════════════════════════"],
+    ["ADDING / REMOVING SUBJECTS"],
+    ["════════════════════════════════════════════════════════════════════════"],
+    [""],
+    ["  • Insert two columns for each new subject (class_score + exam_score)."],
+    ["  • Type the subject name in the first column of the pair (row 1)."],
+    ["  • Type class_score in row 2 col 1 and exam_score in row 2 col 2."],
+    mode !== "PRIMARY"
+      ? ['  • Append " (CORE)" or " (ELECTIVE)" to the subject name.']
+      : ["  • No (CORE)/(ELECTIVE) markers needed for PRIMARY mode."],
+    [""],
+    ["════════════════════════════════════════════════════════════════════════"],
+    ["GRADING SCALES"],
+    ["════════════════════════════════════════════════════════════════════════"],
+    [""],
+    ["  PRIMARY (1–6):"],
+    ["    1 (80–100) Excellent  |  2 (70–79) Very Good  |  3 (60–69) Good"],
+    ["    4 (50–59) Credit      |  5 (45–49) Pass        |  6 (0–44)  Fail"],
+    [""],
+    ["  JHS / BECE (1–9):"],
+    ["    1 (90–100) Excellent  |  2 (80–89) Very Good  |  3 (70–79) Good"],
+    ["    4 (60–69) Credit      |  5 (55–59) Average    |  6 (50–54) Pass"],
+    ["    7 (40–49) Weak Pass   |  8 (35–39) Fail        |  9 (0–34)  Fail"],
+    [""],
+    ["  SHS / WASSCE:"],
+    ["    A1 (75–100)  B2 (70–74)  B3 (65–69)  C4 (60–64)  C5 (55–59)"],
+    ["    C6 (50–54)   D7 (45–49)  E8 (40–44)  F9 (0–39)"],
+    [""],
+    ["════════════════════════════════════════════════════════════════════════"],
+    ["IMPORTANT"],
+    ["════════════════════════════════════════════════════════════════════════"],
+    [""],
+    ["  ✓ Do NOT rename the roll_number or student_name columns."],
+    ["  ✓ Delete the 5 sample rows before entering real student data."],
+    ["  ✓ Roll numbers must be unique per student."],
+    ["  ✓ Save as .xlsx or .xls — not .csv."],
+    ["  ✓ Empty score cells are treated as 0."],
+    [""],
+    ["════════════════════════════════════════════════════════════════════════"],
+  ];
+
+  const sheet   = XLSX.utils.aoa_to_sheet(lines);
+  sheet["!cols"] = [{ wch: 72 }];
+  return sheet;
+}
+
+function randomInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function today() {
+  return new Date().toISOString().split("T")[0];
 }
