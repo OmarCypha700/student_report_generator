@@ -20,10 +20,6 @@ import {
 } from "@/utils/excelProcessor";
 import PDFReportDownload from "@/components/PDFReportDownload";
 
-// ─────────────────────────────────────────────
-// CONSTANTS
-// ─────────────────────────────────────────────
-
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 const MAX_LOGO_SIZE = 2 * 1024 * 1024; // 2 MB
 const ALLOWED_EXCEL_TYPES = [
@@ -34,19 +30,12 @@ const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 const INITIAL_SCHOOL = { name: "", academic_year: "", logo: null };
 
-// ─────────────────────────────────────────────
-// COMPONENT
-// ─────────────────────────────────────────────
-
 export default function ReportGenerator() {
   const [school, setSchool] = useState(INITIAL_SCHOOL);
   const [students, setStudents] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [className, setClassName] = useState("");
   const [loading, setLoading] = useState(false);
-  // isReading = quick metadata-only read triggered on file select.
-  // loading   = full processExcelFile run triggered by Submit.
-  // Kept separate so the UI can show a simple spinner vs. a percentage bar.
   const [isReading, setIsReading] = useState(false);
   const [error, setError] = useState("");
   const [logoError, setLogoError] = useState("");
@@ -269,10 +258,6 @@ export default function ReportGenerator() {
       "Uses WASSCE grading (A1–F9) · Aggregate: 3 Core + 3 Best Electives.",
   };
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // RENDER
-  // ──────────────────────────────────────────────────────────────────────────
-
   return (
     <div className="max-w-6xl mx-auto">
       {/* Header */}
@@ -289,30 +274,6 @@ export default function ReportGenerator() {
       <div className="grid lg:grid-cols-3 gap-6 md:gap-8">
         {/* ── Left Panel ─────────────────────────────────────────────────── */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Mode Toggle */}
-          {/* <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              School Level
-            </label>
-            <div className="flex gap-3">
-              {Object.values(MODES).map((m) => (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => handleModeChange(m)}
-                  className={`px-4 py-2 rounded-xl border text-sm font-medium transition ${
-                    mode === m
-                      ? "bg-blue-600 text-white border-blue-600"
-                      : "bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200"
-                  }`}
-                >
-                  {m}
-                </button>
-              ))}
-            </div>
-            <p className="text-xs text-gray-500 mt-2">{MODE_DESCRIPTIONS[mode]}</p>
-          </div> */}
-
           {/* School Details Card */}
           <div className="bg-white rounded-2xl shadow-lg p-6 md:p-8 border border-gray-200">
             <div className="flex items-center gap-3 mb-6">
@@ -494,7 +455,7 @@ export default function ReportGenerator() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="font-semibold text-gray-900 truncate">
-                        {uploadedFile.name}
+                        {truncate(uploadedFile.name, 15)}
                       </p>
                       <p className="text-sm text-gray-500">
                         {(uploadedFile.size / 1024).toFixed(1)} KB ·{" "}
@@ -681,7 +642,7 @@ export default function ReportGenerator() {
                   isProcessed
                     ? students.length
                     : previewCount > 0
-                      ? `${previewCount} (preview)`
+                      ? `${previewCount}`
                       : "0"
                 }
               />
@@ -789,7 +750,7 @@ function SummaryItem({ label, value }) {
         className="font-semibold text-base truncate ml-2"
         title={String(value)}
       >
-        {value}
+        {truncate(String(value), 15)}
       </span>
     </div>
   );
@@ -804,4 +765,10 @@ function TipItem({ number, text }) {
       <span>{text}</span>
     </li>
   );
+}
+
+function truncate(str, maxLength) {
+  return str.length > maxLength
+    ? str.slice(0, maxLength) + "..."
+    : str;
 }
