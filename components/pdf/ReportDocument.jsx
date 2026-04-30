@@ -180,7 +180,7 @@ export default function ReportDocument({
           {/* ── Footer ────────────────────────────────────────────────── */}
           <View style={styles.footer}>
             <Text style={{ marginTop: 4 }}>
-              Powered by https://studentreportgenerator.vercel.app
+              Powered by https://ilovereport.vercel.app
             </Text>
           </View>
         </Page>
